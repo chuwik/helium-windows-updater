@@ -1,0 +1,187 @@
+<#
+.SYNOPSIS
+    Installs the Helium Browser Auto-Updater
+.DESCRIPTION
+    Copies scripts to AppData and registers scheduled tasks for automatic updates.
+    Run this script once to set up automatic update checking.
+#>
+
+#Requires -Version 5.1
+
+param(
+    [switch]$Force  # Overwrite existing installation
+)
+
+$ErrorActionPreference = "Stop"
+
+# Configuration
+$script:AppDataPath = Join-Path $env:LOCALAPPDATA "HeliumUpdater"
+$script:SourcePath = $PSScriptRoot
+$script:TaskNameLogin = "HeliumUpdater-Login"
+$script:TaskNameDaily = "HeliumUpdater-Daily"
+
+function Write-Status {
+    param([string]$Message, [string]$Type = "INFO")
+    $color = switch ($Type) {
+        "SUCCESS" { "Green" }
+        "ERROR" { "Red" }
+        "WARN" { "Yellow" }
+        default { "White" }
+    }
+    Write-Host "[$Type] $Message" -ForegroundColor $color
+}
+
+function Install-Scripts {
+    Write-Status "Installing scripts to $script:AppDataPath"
+    
+    # Create directory if needed
+    if (-not (Test-Path $script:AppDataPath)) {
+        New-Item -ItemType Directory -Path $script:AppDataPath -Force | Out-Null
+    }
+    
+    # Copy main update script
+    $sourcescript = Join-Path $script:SourcePath "Update-Helium.ps1"
+    $destScript = Join-Path $script:AppDataPath "Update-Helium.ps1"
+    
+    if (-not (Test-Path $sourcescript)) {
+        throw "Update-Helium.ps1 not found in $script:SourcePath"
+    }
+    
+    Copy-Item $sourcescript $destScript -Force
+    Write-Status "Copied Update-Helium.ps1" -Type "SUCCESS"
+}
+
+function Register-ScheduledTasks {
+    Write-Status "Registering scheduled tasks..."
+    
+    $scriptPath = Join-Path $script:AppDataPath "Update-Helium.ps1"
+    $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$scriptPath`""
+    
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable
+    
+    # Remove existing tasks if present
+    Unregister-ScheduledTask -TaskName $script:TaskNameLogin -Confirm:$false -ErrorAction SilentlyContinue
+    Unregister-ScheduledTask -TaskName $script:TaskNameDaily -Confirm:$false -ErrorAction SilentlyContinue
+    
+    # Task 1: On user login
+    $triggerLogin = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+    Register-ScheduledTask -TaskName $script:TaskNameLogin -Action $action -Trigger $triggerLogin -Settings $settings -Description "Check for Helium browser updates on login" | Out-Null
+    Write-Status "Registered login task: $script:TaskNameLogin" -Type "SUCCESS"
+    
+    # Task 2: Daily at noon
+    $triggerDaily = New-ScheduledTaskTrigger -Daily -At "12:00 PM"
+    Register-ScheduledTask -TaskName $script:TaskNameDaily -Action $action -Trigger $triggerDaily -Settings $settings -Description "Check for Helium browser updates daily" | Out-Null
+    Write-Status "Registered daily task: $script:TaskNameDaily" -Type "SUCCESS"
+}
+
+function Register-ProtocolHandler {
+    Write-Status "Registering protocol handler for toast notifications..."
+    
+    $scriptPath = Join-Path $script:AppDataPath "Update-Helium.ps1"
+    
+    # Create protocol handler for "helium-update:" URLs
+    $protocolPath = "HKCU:\Software\Classes\helium-update"
+    
+    # Remove existing if present
+    if (Test-Path $protocolPath) {
+        Remove-Item $protocolPath -Recurse -Force
+    }
+    
+    # Create protocol handler
+    New-Item -Path $protocolPath -Force | Out-Null
+    Set-ItemProperty -Path $protocolPath -Name "(Default)" -Value "URL:Helium Update Protocol"
+    Set-ItemProperty -Path $protocolPath -Name "URL Protocol" -Value ""
+    
+    # Create shell\open\command
+    $commandPath = Join-Path $protocolPath "shell\open\command"
+    New-Item -Path $commandPath -Force | Out-Null
+    
+    # Command to handle the protocol - validates version format before passing to script
+    $command = "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"& { param(`$url) `$uri = [Uri]`$url; if (`$uri.Host -eq 'install') { `$version = [System.Web.HttpUtility]::ParseQueryString(`$uri.Query)['version']; if (`$version -match '^\d+\.\d+\.\d+(\.\d+)?$') { & '$scriptPath' -Install -Version `$version } } }`" '%1'"
+    Set-ItemProperty -Path $commandPath -Name "(Default)" -Value $command
+    
+    Write-Status "Registered helium-update: protocol handler" -Type "SUCCESS"
+}
+
+function Initialize-Config {
+    $configPath = Join-Path $script:AppDataPath "config.json"
+    
+    if (-not (Test-Path $configPath)) {
+        Write-Status "Creating initial config file..."
+        
+        # Try to detect if Helium is already installed and prompt for version
+        $heliumInstalled = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" 2>$null | Where-Object { $_.DisplayName -like "*helium*" } | Select-Object -First 1
+        
+        $config = @{
+            lastChecked = $null
+            installedHeliumVersion = $null
+        }
+        
+        if ($heliumInstalled) {
+            Write-Status "Helium browser detected on system" -Type "SUCCESS"
+            Write-Host ""
+            Write-Host "Since this is a fresh install, we need to know your current Helium version."
+            Write-Host "You can find this in Helium: Menu > Help > About Helium"
+            Write-Host "The version looks like: 0.7.10.1"
+            Write-Host ""
+            $currentVersion = Read-Host "Enter your current Helium version (or press Enter to check for updates immediately)"
+            
+            if ($currentVersion -match '^\d+\.\d+\.\d+(\.\d+)?$') {
+                $config.installedHeliumVersion = $currentVersion
+                Write-Status "Set current version to $currentVersion" -Type "SUCCESS"
+            } else {
+                Write-Status "No version entered - will prompt for update on first run" -Type "WARN"
+            }
+        }
+        
+        $config | ConvertTo-Json | Set-Content $configPath -Force
+    }
+}
+
+# Main installation
+try {
+    Write-Host ""
+    Write-Host "================================" -ForegroundColor Cyan
+    Write-Host "  Helium Updater Installation   " -ForegroundColor Cyan
+    Write-Host "================================" -ForegroundColor Cyan
+    Write-Host ""
+    
+    # Check if already installed
+    if ((Test-Path $script:AppDataPath) -and -not $Force) {
+        $existing = Get-ScheduledTask -TaskName $script:TaskNameLogin -ErrorAction SilentlyContinue
+        if ($existing) {
+            Write-Status "Helium Updater is already installed." -Type "WARN"
+            Write-Host "Use -Force to reinstall, or run Uninstall-HeliumUpdater.ps1 first."
+            exit 0
+        }
+    }
+    
+    Install-Scripts
+    Register-ScheduledTasks
+    Register-ProtocolHandler
+    Initialize-Config
+    
+    Write-Host ""
+    Write-Host "================================" -ForegroundColor Green
+    Write-Status "Installation complete!" -Type "SUCCESS"
+    Write-Host "================================" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Helium Updater will now:"
+    Write-Host "  - Check for updates when you log in"
+    Write-Host "  - Check for updates daily at 12:00 PM"
+    Write-Host ""
+    Write-Host "You can manually check for updates by running:"
+    Write-Host "  & '$script:AppDataPath\Update-Helium.ps1'"
+    Write-Host ""
+    
+    # Offer to run check now
+    $runNow = Read-Host "Would you like to check for updates now? (Y/n)"
+    if ($runNow -ne 'n' -and $runNow -ne 'N') {
+        Write-Host ""
+        & (Join-Path $script:AppDataPath "Update-Helium.ps1")
+    }
+    
+} catch {
+    Write-Status "Installation failed: $_" -Type "ERROR"
+    exit 1
+}
