@@ -242,8 +242,11 @@ function Show-UpdateNotification {
         try {
             Import-Module BurntToast -ErrorAction Stop
             
-            $installAction = New-BTButton -Content "Install Now" -Arguments "helium-update:install?version=$NewVersion" -ActivationType Protocol
-            $laterAction = New-BTButton -Content "Not Now" -Arguments "helium-update:later" -ActivationType Protocol
+            # Build PowerShell command to run the install directly
+            $installCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -Install -Version `"$NewVersion`""
+            
+            $installAction = New-BTButton -Content "Install Now" -Arguments $installCommand
+            $laterAction = New-BTButton -Content "Not Now" -Arguments "dismiss:"
             
             if ($CurrentVersion) {
                 $text1 = New-BTText -Content "Helium Update Available"

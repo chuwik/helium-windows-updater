@@ -74,33 +74,14 @@ function Register-ScheduledTasks {
     Write-Status "Registered daily task: $script:TaskNameDaily" -Type "SUCCESS"
 }
 
-function Register-ProtocolHandler {
-    Write-Status "Registering protocol handler for toast notifications..."
-    
-    $scriptPath = Join-Path $script:AppDataPath "Update-Helium.ps1"
-    
-    # Create protocol handler for "helium-update:" URLs
+function Unregister-LegacyProtocolHandler {
+    # Clean up old protocol handler if it exists from previous installations
     $protocolPath = "HKCU:\Software\Classes\helium-update"
     
-    # Remove existing if present
     if (Test-Path $protocolPath) {
         Remove-Item $protocolPath -Recurse -Force
+        Write-Status "Removed legacy protocol handler" -Type "SUCCESS"
     }
-    
-    # Create protocol handler
-    New-Item -Path $protocolPath -Force | Out-Null
-    Set-ItemProperty -Path $protocolPath -Name "(Default)" -Value "URL:Helium Update Protocol"
-    Set-ItemProperty -Path $protocolPath -Name "URL Protocol" -Value ""
-    
-    # Create shell\open\command
-    $commandPath = Join-Path $protocolPath "shell\open\command"
-    New-Item -Path $commandPath -Force | Out-Null
-    
-    # Command to handle the protocol - validates version format before passing to script
-    $command = "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"& { param(`$url) `$uri = [Uri]`$url; if (`$uri.Host -eq 'install') { `$version = [System.Web.HttpUtility]::ParseQueryString(`$uri.Query)['version']; if (`$version -match '^\d+\.\d+\.\d+(\.\d+)?$') { & '$scriptPath' -Install -Version `$version } } }`" '%1'"
-    Set-ItemProperty -Path $commandPath -Name "(Default)" -Value $command
-    
-    Write-Status "Registered helium-update: protocol handler" -Type "SUCCESS"
 }
 
 function Initialize-Config {
@@ -158,7 +139,7 @@ try {
     
     Install-Scripts
     Register-ScheduledTasks
-    Register-ProtocolHandler
+    Unregister-LegacyProtocolHandler
     Initialize-Config
     
     Write-Host ""
