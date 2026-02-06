@@ -69,6 +69,7 @@ Or manually:
 | `Update-Helium.ps1` | Main update check script |
 | `Install-HeliumUpdater.ps1` | One-time setup script |
 | `Uninstall-HeliumUpdater.ps1` | Removal script |
+| `build.ps1` | Build script — runs lint and tests |
 
 After installation, files are located at:
 ```
@@ -108,6 +109,25 @@ Get-ScheduledTask -TaskName "HeliumUpdater*"
 - Windows 10/11
 - PowerShell 5.1 or later (included with Windows)
 - Internet connection (to check GitHub releases)
+
+## Development
+
+Run the full build (lint + tests):
+
+```powershell
+.\build.ps1
+```
+
+Run specific tasks:
+
+```powershell
+.\build.ps1 -Task Lint         # PSScriptAnalyzer only
+.\build.ps1 -Task Unit         # Unit tests only
+.\build.ps1 -Task Integration  # Integration tests only
+.\build.ps1 -Task Test         # All tests (no lint)
+```
+
+Dependencies (Pester v5, PSScriptAnalyzer) are installed automatically on first run.
 
 ## Releasing
 

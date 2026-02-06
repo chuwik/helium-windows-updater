@@ -1,0 +1,19 @@
+{
+  "tag_name": "v99.0.0",
+  "name": "Helium v99.0.0",
+  "html_url": "https://github.com/imputnet/helium-windows/releases/tag/v99.0.0",
+  "assets": [
+    {
+      "name": "helium_99.0.0_x64-installer.exe",
+      "browser_download_url": "https://github.com/imputnet/helium-windows/releases/download/v99.0.0/helium_99.0.0_x64-installer.exe",
+      "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 85000000
+    },
+    {
+      "name": "helium_99.0.0_arm64-installer.exe",
+      "browser_download_url": "https://github.com/imputnet/helium-windows/releases/download/v99.0.0/helium_99.0.0_arm64-installer.exe",
+      "digest": "sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+      "size": 82000000
+    }
+  ]
+}

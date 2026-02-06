@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-PowerShell-based auto-updater for [Helium browser](https://github.com/imputnet/helium-windows) on Windows. It polls GitHub releases for new versions, notifies the user, and performs silent installation. There is no build system, test suite, or linter — changes are validated manually.
+PowerShell-based auto-updater for [Helium browser](https://github.com/imputnet/helium-windows) on Windows. It polls GitHub releases for new versions, notifies the user, and performs silent installation.
 
 ## Architecture
 
@@ -24,6 +24,17 @@ Three standalone PowerShell scripts, each with a specific role:
 ## Releases
 
 Tag-triggered GitHub Actions workflow (`.github/workflows/release.yml`). Pushing a `v*` tag builds a zip of the scripts, generates a SHA256 checksum, and creates a GitHub Release with auto-generated notes. The zip includes `Update-Helium.ps1`, `Install-HeliumUpdater.ps1`, `Uninstall-HeliumUpdater.ps1`, `README.md`, and `LICENSE`.
+
+## Testing & CI
+
+- **Build script** — `.\build.ps1` runs lint + tests. Accepts `-Task` parameter: `All` (default), `Lint`, `Test`, `Unit`, `Integration`.
+- **Test framework** — Pester v5. Tests live in `tests/Unit/` (57 mocked tests) and `tests/Integration/` (20 tests using real scheduled tasks and filesystem).
+- **Linting** — PSScriptAnalyzer with PSGallery ruleset. Excluded rules: `PSAvoidUsingWriteHost`, `PSUseSingularNouns`, `PSUseShouldProcessForStateChangingFunctions` (all intentional in this codebase).
+- **CI workflow** — `.github/workflows/ci.yml` runs lint + unit + integration tests on `windows-latest` for PRs and pushes to `main`.
+- **Dot-source guard** — All scripts wrap their `Main` call in `if ($MyInvocation.InvocationName -ne '.') { Main }` so Pester can dot-source them without triggering side effects. New scripts must follow this pattern.
+- **Test fixtures** — Canned GitHub API responses in `tests/fixtures/`. Tests never make real network calls or run real installers.
+- **Test helpers** — `tests/helpers/TestHelpers.psm1` provides `New-TestDirectory`, `Remove-TestDirectory`, `New-MockConfig`, `Get-FixturePath`, `Get-FixtureContent`.
+- **Suppressing expected errors** — Tests that exercise error paths use `2>$null` to suppress `Write-Error` noise while still asserting return values.
 
 ## Key Conventions
 

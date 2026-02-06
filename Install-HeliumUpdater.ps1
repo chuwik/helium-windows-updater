@@ -107,57 +107,63 @@ function Initialize-Config {
     }
 }
 
-# Main installation
-try {
-    Write-Host ""
-    Write-Host "================================" -ForegroundColor Cyan
-    Write-Host "  Helium Updater Installation   " -ForegroundColor Cyan
-    Write-Host "================================" -ForegroundColor Cyan
-    Write-Host ""
-    
-    # Check if already installed
-    if ((Test-Path $script:AppDataPath) -and -not $Force) {
-        $existing = Get-ScheduledTask -TaskName $script:TaskNameLogin -ErrorAction SilentlyContinue
-        if ($existing) {
-            Write-Status "Helium Updater is already installed." -Type "WARN"
-            Write-Host "Use -Force to reinstall, or run Uninstall-HeliumUpdater.ps1 first."
-            exit 0
-        }
-    }
-    
-    Install-Scripts
-    Register-ScheduledTasks
-    Unregister-LegacyProtocolHandler
-    Initialize-Config
-    
-    Write-Host ""
-    Write-Host "================================" -ForegroundColor Green
-    Write-Status "Installation complete!" -Type "SUCCESS"
-    Write-Host "================================" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "Helium Updater will now:"
-    Write-Host "  - Check for updates when you log in"
-    Write-Host "  - Check for updates daily at 12:00 PM"
-    Write-Host ""
-    Write-Host "You can manually check for updates by running:"
-    Write-Host "  & '$script:AppDataPath\Update-Helium.ps1'"
-    Write-Host ""
-    
-    # Offer to run check now or install Helium
-    $heliumInstalled = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" 2>$null | Where-Object { $_.DisplayName -like "*helium*" } | Select-Object -First 1
-    
-    if ($heliumInstalled) {
-        $runNow = Read-Host "Would you like to check for updates now? (Y/n)"
-    } else {
-        $runNow = Read-Host "Helium browser is not installed. Would you like to install it now? (Y/n)"
-    }
-    
-    if ($runNow -ne 'n' -and $runNow -ne 'N') {
+function Main {
+    try {
         Write-Host ""
-        & (Join-Path $script:AppDataPath "Update-Helium.ps1")
+        Write-Host "================================" -ForegroundColor Cyan
+        Write-Host "  Helium Updater Installation   " -ForegroundColor Cyan
+        Write-Host "================================" -ForegroundColor Cyan
+        Write-Host ""
+        
+        # Check if already installed
+        if ((Test-Path $script:AppDataPath) -and -not $Force) {
+            $existing = Get-ScheduledTask -TaskName $script:TaskNameLogin -ErrorAction SilentlyContinue
+            if ($existing) {
+                Write-Status "Helium Updater is already installed." -Type "WARN"
+                Write-Host "Use -Force to reinstall, or run Uninstall-HeliumUpdater.ps1 first."
+                exit 0
+            }
+        }
+        
+        Install-Scripts
+        Register-ScheduledTasks
+        Unregister-LegacyProtocolHandler
+        Initialize-Config
+        
+        Write-Host ""
+        Write-Host "================================" -ForegroundColor Green
+        Write-Status "Installation complete!" -Type "SUCCESS"
+        Write-Host "================================" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "Helium Updater will now:"
+        Write-Host "  - Check for updates when you log in"
+        Write-Host "  - Check for updates daily at 12:00 PM"
+        Write-Host ""
+        Write-Host "You can manually check for updates by running:"
+        Write-Host "  & '$script:AppDataPath\Update-Helium.ps1'"
+        Write-Host ""
+        
+        # Offer to run check now or install Helium
+        $heliumInstalled = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" 2>$null | Where-Object { $_.DisplayName -like "*helium*" } | Select-Object -First 1
+        
+        if ($heliumInstalled) {
+            $runNow = Read-Host "Would you like to check for updates now? (Y/n)"
+        } else {
+            $runNow = Read-Host "Helium browser is not installed. Would you like to install it now? (Y/n)"
+        }
+        
+        if ($runNow -ne 'n' -and $runNow -ne 'N') {
+            Write-Host ""
+            & (Join-Path $script:AppDataPath "Update-Helium.ps1")
+        }
+        
+    } catch {
+        Write-Status "Installation failed: $_" -Type "ERROR"
+        exit 1
     }
-    
-} catch {
-    Write-Status "Installation failed: $_" -Type "ERROR"
-    exit 1
+}
+
+# Only run Main when executed directly, not when dot-sourced for testing
+if ($MyInvocation.InvocationName -ne '.') {
+    Main
 }

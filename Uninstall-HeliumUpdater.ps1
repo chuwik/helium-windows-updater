@@ -73,36 +73,42 @@ function Remove-Files {
     }
 }
 
-# Main uninstallation
-try {
-    Write-Host ""
-    Write-Host "================================" -ForegroundColor Cyan
-    Write-Host "  Helium Updater Uninstall      " -ForegroundColor Cyan
-    Write-Host "================================" -ForegroundColor Cyan
-    Write-Host ""
-    
-    $confirm = Read-Host "Are you sure you want to uninstall Helium Updater? (y/N)"
-    if ($confirm -ne 'y' -and $confirm -ne 'Y') {
-        Write-Status "Uninstall cancelled" -Type "WARN"
-        exit 0
+function Main {
+    try {
+        Write-Host ""
+        Write-Host "================================" -ForegroundColor Cyan
+        Write-Host "  Helium Updater Uninstall      " -ForegroundColor Cyan
+        Write-Host "================================" -ForegroundColor Cyan
+        Write-Host ""
+        
+        $confirm = Read-Host "Are you sure you want to uninstall Helium Updater? (y/N)"
+        if ($confirm -ne 'y' -and $confirm -ne 'Y') {
+            Write-Status "Uninstall cancelled" -Type "WARN"
+            exit 0
+        }
+        
+        Write-Host ""
+        
+        Unregister-ScheduledTasks
+        Unregister-ProtocolHandler
+        Remove-Files
+        
+        Write-Host ""
+        Write-Host "================================" -ForegroundColor Green
+        Write-Status "Uninstall complete!" -Type "SUCCESS"
+        Write-Host "================================" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "Helium Updater has been removed from your system."
+        Write-Host "Note: This does not affect Helium browser itself."
+        Write-Host ""
+        
+    } catch {
+        Write-Status "Uninstall failed: $_" -Type "ERROR"
+        exit 1
     }
-    
-    Write-Host ""
-    
-    Unregister-ScheduledTasks
-    Unregister-ProtocolHandler
-    Remove-Files
-    
-    Write-Host ""
-    Write-Host "================================" -ForegroundColor Green
-    Write-Status "Uninstall complete!" -Type "SUCCESS"
-    Write-Host "================================" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "Helium Updater has been removed from your system."
-    Write-Host "Note: This does not affect Helium browser itself."
-    Write-Host ""
-    
-} catch {
-    Write-Status "Uninstall failed: $_" -Type "ERROR"
-    exit 1
+}
+
+# Only run Main when executed directly, not when dot-sourced for testing
+if ($MyInvocation.InvocationName -ne '.') {
+    Main
 }

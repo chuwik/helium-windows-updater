@@ -54,7 +54,7 @@ function Get-UpdaterLock {
     return $true
 }
 
-function Release-UpdaterLock {
+function Remove-UpdaterLock {
     if (Test-Path $script:LockPath) {
         Remove-Item $script:LockPath -Force -ErrorAction SilentlyContinue
     }
@@ -455,9 +455,12 @@ function Main {
             Write-Host "Helium is up to date (version $currentVersion)."
         }
     } finally {
-        Release-UpdaterLock
+        Remove-UpdaterLock
         Write-Log "========== Helium Updater Finished =========="
     }
 }
 
-Main
+# Only run Main when executed directly, not when dot-sourced for testing
+if ($MyInvocation.InvocationName -ne '.') {
+    Main
+}
