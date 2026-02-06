@@ -8,9 +8,9 @@ PowerShell-based auto-updater for [Helium browser](https://github.com/imputnet/h
 
 Three standalone PowerShell scripts, each with a specific role:
 
-- **`Update-Helium.ps1`** — Core updater logic. Runs as a scheduled task (on login + daily at noon). Checks GitHub API for the latest release, compares versions, prompts the user, downloads and installs the update. Also handles direct install invocation via `-Install -Version` parameters (triggered from toast notification buttons).
-- **`Install-HeliumUpdater.ps1`** — One-time setup. Copies `Update-Helium.ps1` to `%LOCALAPPDATA%\HeliumUpdater\`, registers two Windows Scheduled Tasks, creates `config.json`, and cleans up legacy protocol handlers.
-- **`Uninstall-HeliumUpdater.ps1`** — Tears down scheduled tasks, protocol handler registry key, and the `%LOCALAPPDATA%\HeliumUpdater\` directory.
+- **`Update-Helium.ps1`** — Core updater logic. Runs as a scheduled task (on login + daily at noon). Checks GitHub API for the latest release, compares versions, prompts the user, downloads and installs the update. Also handles direct install invocation via `-Install -Version` parameters. Installs Helium directly if not already present.
+- **`Install-HeliumUpdater.ps1`** — One-time setup. Copies `Update-Helium.ps1` to `%LOCALAPPDATA%\HeliumUpdater\`, registers two Windows Scheduled Tasks, and creates `config.json`.
+- **`Uninstall-HeliumUpdater.ps1`** — Tears down scheduled tasks and the `%LOCALAPPDATA%\HeliumUpdater\` directory.
 
 ### Runtime file layout (after installation)
 
@@ -33,5 +33,6 @@ Tag-triggered GitHub Actions workflow (`.github/workflows/release.yml`). Pushing
 - **Version format** — Versions follow `MAJOR.MINOR.PATCH[.BUILD]` (e.g., `0.7.10.1`). The `$script:VersionPattern` regex validates this. Versions are compared segment-by-segment after stripping `v` prefix and pre-release suffixes.
 - **Concurrency control** — A file-based lock (`updater.lock` with PID) prevents concurrent updater executions, with a 10-minute stale lock timeout.
 - **Security checks** — Installer downloads are verified via SHA256 checksum from the GitHub API asset digest. Version strings are validated against `$script:VersionPattern` before use in file paths to prevent injection.
-- **Notification fallback** — Uses BurntToast module for toast notifications if available; falls back to `System.Windows.Forms.MessageBox`.
+- **Notifications** — Uses `System.Windows.Forms.MessageBox` for user prompts (update available, install confirmation).
 - **Error handling** — Install/uninstall scripts set `$ErrorActionPreference = "Stop"`. The updater uses try/catch blocks with `Write-Log` for error reporting and always releases the lock in a `finally` block.
+- **Conventional Commits** — All commit messages must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification (e.g., `fix: ...`, `feat: ...`, `chore: ...`, `docs: ...`).

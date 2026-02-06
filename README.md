@@ -5,8 +5,9 @@ A PowerShell-based auto-updater for [Helium browser](https://github.com/imputnet
 ## Features
 
 - ✅ Checks for updates from GitHub releases automatically
+- ✅ Installs Helium browser automatically if not already installed
 - ✅ Runs on Windows login and daily at noon
-- ✅ Shows toast notification (or message box) when update is available
+- ✅ Shows a message box when an update is available
 - ✅ Downloads and installs updates silently (after user approval)
 - ✅ Auto-detects CPU architecture (x64 or ARM64)
 - ✅ Verifies installer checksum (SHA256) before installation
@@ -18,7 +19,7 @@ A PowerShell-based auto-updater for [Helium browser](https://github.com/imputnet
 1. Open PowerShell
 2. Navigate to this directory:
    ```powershell
-   cd D:\helium-updater
+   cd path\to\helium-windows-updater
    ```
 3. Run the installer:
    ```powershell
@@ -30,8 +31,7 @@ The installer will:
 - Create two scheduled tasks:
   - **HeliumUpdater-Login**: Runs when you log in to Windows
   - **HeliumUpdater-Daily**: Runs daily at 12:00 PM
-- Register a protocol handler for toast notification buttons
-- Ask for your current Helium version (optional)
+- Offer to install Helium (if not installed) or check for updates
 
 ## Usage
 
@@ -43,9 +43,9 @@ After installation, the updater runs automatically. You can also manually check 
 
 ### When an Update is Available
 
-1. You'll see a notification asking if you want to install
-2. Click "Install Now" to download and install the update
-3. Click "Not Now" to be reminded on the next scheduled run
+1. You'll see a message box asking if you want to install the update
+2. Click "Yes" to download and install the update
+3. Click "No" to be reminded on the next scheduled run
 
 **Note**: If Helium is running when you try to install, you'll be prompted to close it first.
 
@@ -54,14 +54,13 @@ After installation, the updater runs automatically. You can also manually check 
 To remove the updater (this does NOT remove Helium browser):
 
 ```powershell
-cd D:\helium-updater
+cd path\to\helium-windows-updater
 .\Uninstall-HeliumUpdater.ps1
 ```
 
 Or manually:
 1. Open Task Scheduler and delete tasks named `HeliumUpdater-Login` and `HeliumUpdater-Daily`
 2. Delete the folder `%LOCALAPPDATA%\HeliumUpdater`
-3. Delete the registry key `HKCU:\Software\Classes\helium-update`
 
 ## Files
 
@@ -109,16 +108,6 @@ Get-ScheduledTask -TaskName "HeliumUpdater*"
 - Windows 10/11
 - PowerShell 5.1 or later (included with Windows)
 - Internet connection (to check GitHub releases)
-
-## Optional: BurntToast Module
-
-For nicer toast notifications with action buttons, install the BurntToast PowerShell module:
-
-```powershell
-Install-Module -Name BurntToast -Scope CurrentUser
-```
-
-Without BurntToast, the updater falls back to a standard Windows message box.
 
 ## Releasing
 
