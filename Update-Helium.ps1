@@ -127,26 +127,7 @@ function Test-HeliumInstalled {
 
 function Get-InstalledVersion {
     $config = Get-Config
-    $version = $config.installedHeliumVersion
-    
-    # Fallback: detect from registry if config has no version
-    if ([string]::IsNullOrEmpty($version)) {
-        try {
-            $heliumInstalled = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" 2>$null | Where-Object { $_.DisplayName -like "*helium*" } | Select-Object -First 1
-            if ($heliumInstalled -and $heliumInstalled.DisplayVersion -match '^\d+\.\d+\.\d+(\.\d+)?$') {
-                $version = $heliumInstalled.DisplayVersion
-                Write-Log "Detected installed version from registry: $version"
-                
-                # Save detected version to config for future use
-                $config.installedHeliumVersion = $version
-                Save-Config -Config $config
-            }
-        } catch {
-            Write-Log "Registry version detection failed: $_" -Level "WARN"
-        }
-    }
-    
-    return $version
+    return $config.installedHeliumVersion
 }
 
 function Compare-Versions {
@@ -258,48 +239,7 @@ function Show-UpdateNotification {
     
     Write-Log "Showing update notification: $CurrentVersion -> $NewVersion"
     
-    # Get the script path for the toast action
-    $scriptPath = $PSCommandPath
-    if ([string]::IsNullOrEmpty($scriptPath)) {
-        $scriptPath = Join-Path $script:AppDataPath "Update-Helium.ps1"
-    }
-    
-    # Try BurntToast first for rich notifications with buttons
-    $hasBurntToast = Get-Module -ListAvailable -Name BurntToast
-    
-    if ($hasBurntToast) {
-        try {
-            Import-Module BurntToast -ErrorAction Stop
-            
-            # Build PowerShell command to run the install directly
-            $installCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -Install -Version `"$NewVersion`""
-            
-            $installAction = New-BTButton -Content "Install Now" -Arguments $installCommand
-            $laterAction = New-BTButton -Content "Not Now" -Arguments "dismiss:"
-            
-            if ($CurrentVersion) {
-                $text1 = New-BTText -Content "Helium Update Available"
-                $text2 = New-BTText -Content "Update from $CurrentVersion to $NewVersion"
-            } else {
-                $text1 = New-BTText -Content "Helium Available"
-                $text2 = New-BTText -Content "Version $NewVersion is ready to install."
-            }
-            
-            $binding = New-BTBinding -Children $text1, $text2
-            $visual = New-BTVisual -BindingGeneric $binding
-            $actions = New-BTAction -Buttons $installAction, $laterAction
-            
-            $content = New-BTContent -Visual $visual -Actions $actions
-            Submit-BTNotification -Content $content
-            
-            Write-Log "Toast notification sent via BurntToast"
-            return
-        } catch {
-            Write-Log "BurntToast failed: $_ - falling back to MessageBox" -Level "WARN"
-        }
-    }
-    
-    # Fallback: MessageBox prompt
+    # MessageBox prompt
     Add-Type -AssemblyName System.Windows.Forms
     
     if ($CurrentVersion) {

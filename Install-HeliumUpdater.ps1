@@ -90,7 +90,7 @@ function Initialize-Config {
     if (-not (Test-Path $configPath)) {
         Write-Status "Creating initial config file..."
         
-        # Try to detect if Helium is already installed and prompt for version
+        # Check if Helium is installed (registry DisplayVersion is Chromium's, not Helium's)
         $heliumInstalled = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" 2>$null | Where-Object { $_.DisplayName -like "*helium*" } | Select-Object -First 1
         
         $config = @{
@@ -100,27 +100,7 @@ function Initialize-Config {
         
         if ($heliumInstalled) {
             Write-Status "Helium browser detected on system" -Type "SUCCESS"
-            
-            # Try to auto-detect version from registry DisplayVersion
-            $detectedVersion = $heliumInstalled.DisplayVersion
-            if ($detectedVersion -match '^\d+\.\d+\.\d+(\.\d+)?$') {
-                $config.installedHeliumVersion = $detectedVersion
-                Write-Status "Detected installed version: $detectedVersion" -Type "SUCCESS"
-            } else {
-                Write-Host ""
-                Write-Host "Could not auto-detect your Helium version."
-                Write-Host "You can find this in Helium: Menu > Help > About Helium"
-                Write-Host "The version looks like: 0.7.10.1"
-                Write-Host ""
-                $currentVersion = Read-Host "Enter your current Helium version (or press Enter to check for updates immediately)"
-                
-                if ($currentVersion -match '^\d+\.\d+\.\d+(\.\d+)?$') {
-                    $config.installedHeliumVersion = $currentVersion
-                    Write-Status "Set current version to $currentVersion" -Type "SUCCESS"
-                } else {
-                    Write-Status "No version entered - will prompt for update on first run" -Type "WARN"
-                }
-            }
+            Write-Status "Version will be determined on next update check" -Type "INFO"
         }
         
         $config | ConvertTo-Json | Set-Content $configPath -Force
