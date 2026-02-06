@@ -115,6 +115,16 @@ function Get-LatestRelease {
     }
 }
 
+function Test-HeliumInstalled {
+    # Check registry for any Helium installation
+    try {
+        $heliumInstalled = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" 2>$null | Where-Object { $_.DisplayName -like "*helium*" } | Select-Object -First 1
+        return [bool]$heliumInstalled
+    } catch {
+        return $false
+    }
+}
+
 function Get-InstalledVersion {
     $config = Get-Config
     $version = $config.installedHeliumVersion
@@ -309,7 +319,7 @@ function Show-UpdateNotification {
     
     if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
         Write-Log "User chose to install"
-        Install-Update -Version $NewVersion
+        $null = Install-Update -Version $NewVersion
     } else {
         Write-Log "User declined, will ask again next time"
     }
@@ -360,6 +370,7 @@ function Install-Update {
     
     try {
         Write-Log "Downloading from: $installerUrl"
+        Write-Host "Downloading Helium installer..."
         
         $webClient = New-Object System.Net.WebClient
         $webClient.DownloadFile($installerUrl, $tempPath)
@@ -367,6 +378,7 @@ function Install-Update {
         Write-Log "Download complete"
     } catch {
         Write-Log "Download failed: $_" -Level "ERROR"
+        Write-Host "Download failed. Please check your internet connection and try again." -ForegroundColor Red
         if (Test-Path $tempPath) { Remove-Item $tempPath -Force -ErrorAction SilentlyContinue }
         return $false
     }
@@ -414,6 +426,7 @@ function Install-Update {
     
     # Run installer silently
     Write-Log "Running installer..."
+    Write-Host "Installing..."
     try {
         $process = Start-Process -FilePath $tempPath -ArgumentList "/S" -Wait -PassThru
         
@@ -426,22 +439,17 @@ function Install-Update {
             $config.lastChecked = (Get-Date).ToString("o")
             Save-Config -Config $config
             
-            # Show success notification
-            Add-Type -AssemblyName System.Windows.Forms
-            [System.Windows.Forms.MessageBox]::Show(
-                "Helium has been updated to version $cleanVersion",
-                "Update Complete",
-                [System.Windows.Forms.MessageBoxButtons]::OK,
-                [System.Windows.Forms.MessageBoxIcon]::Information
-            )
+            Write-Host "Helium version $cleanVersion installed successfully." -ForegroundColor Green
             
             return $true
         } else {
             Write-Log "Installer exited with code: $($process.ExitCode)" -Level "ERROR"
+            Write-Host "Installation failed (exit code $($process.ExitCode))." -ForegroundColor Red
             return $false
         }
     } catch {
         Write-Log "Installation failed: $_" -Level "ERROR"
+        Write-Host "Installation failed. See log for details." -ForegroundColor Red
         return $false
     } finally {
         # Always clean up installer
@@ -466,7 +474,7 @@ function Main {
         # If called with -Install flag, go straight to installation
         if ($Install -and $Version) {
             Write-Log "Install requested for version: $Version"
-            Install-Update -Version $Version
+            $null = Install-Update -Version $Version
             return
         }
         
@@ -488,12 +496,23 @@ function Main {
         $config.lastChecked = (Get-Date).ToString("o")
         Save-Config -Config $config
         
+        # If Helium is not installed at all, install it directly
+        if (-not (Test-HeliumInstalled) -and [string]::IsNullOrEmpty($currentVersion)) {
+            Write-Log "Helium is not installed - installing directly"
+            $cleanLatest = $latestVersion -replace '^v', '' -replace '-.*$', ''
+            Write-Host "Helium browser is not installed. Installing version $cleanLatest..."
+            $null = Install-Update -Version $latestVersion
+            return
+        }
+        
         # Compare versions
         if (Compare-Versions -Current $currentVersion -Latest $latestVersion) {
             Write-Log "Update available!"
+            Write-Host "Helium update available: $currentVersion -> $($latestVersion -replace '^v', '')"
             Show-UpdateNotification -CurrentVersion $currentVersion -NewVersion $latestVersion
         } else {
             Write-Log "Already up to date"
+            Write-Host "Helium is up to date (version $currentVersion)."
         }
     } finally {
         Release-UpdaterLock

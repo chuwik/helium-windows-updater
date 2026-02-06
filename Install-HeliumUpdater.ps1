@@ -163,8 +163,15 @@ try {
     Write-Host "  & '$script:AppDataPath\Update-Helium.ps1'"
     Write-Host ""
     
-    # Offer to run check now
-    $runNow = Read-Host "Would you like to check for updates now? (Y/n)"
+    # Offer to run check now or install Helium
+    $heliumInstalled = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" 2>$null | Where-Object { $_.DisplayName -like "*helium*" } | Select-Object -First 1
+    
+    if ($heliumInstalled) {
+        $runNow = Read-Host "Would you like to check for updates now? (Y/n)"
+    } else {
+        $runNow = Read-Host "Helium browser is not installed. Would you like to install it now? (Y/n)"
+    }
+    
     if ($runNow -ne 'n' -and $runNow -ne 'N') {
         Write-Host ""
         & (Join-Path $script:AppDataPath "Update-Helium.ps1")
