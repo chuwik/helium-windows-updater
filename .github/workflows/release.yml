@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create release zip
+        run: |
+          zip helium-windows-updater.zip \
+            Update-Helium.ps1 \
+            Install-HeliumUpdater.ps1 \
+            Uninstall-HeliumUpdater.ps1 \
+            README.md \
+            LICENSE
+
+      - name: Generate checksum
+        run: sha256sum helium-windows-updater.zip > checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            helium-windows-updater.zip
+            checksums.txt

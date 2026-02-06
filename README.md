@@ -120,6 +120,17 @@ Install-Module -Name BurntToast -Scope CurrentUser
 
 Without BurntToast, the updater falls back to a standard Windows message box.
 
+## Releasing
+
+Releases are automated via GitHub Actions. To publish a new release:
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+This creates a GitHub Release with a zip of all scripts and a SHA256 checksum file. Release notes are auto-generated from commits since the last tag.
+
 ## License
 
 MIT License - feel free to modify and distribute.
