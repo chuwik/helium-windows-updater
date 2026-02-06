@@ -106,6 +106,10 @@ Get-ScheduledTask -TaskName "HeliumUpdater*"
 & "$env:LOCALAPPDATA\HeliumUpdater\Update-Helium.ps1" -Verbose
 ```
 
+## Alternative: winget
+
+If you use [winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/), you can install Helium with `winget install ImputNet.Helium` and schedule `winget upgrade --id ImputNet.Helium --silent` via Task Scheduler. This project exists for users who want more control (user prompts, logging, checksum verification) or don't have winget.
+
 ## Requirements
 
 - Windows 10/11
