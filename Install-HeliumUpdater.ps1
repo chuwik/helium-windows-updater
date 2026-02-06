@@ -100,18 +100,26 @@ function Initialize-Config {
         
         if ($heliumInstalled) {
             Write-Status "Helium browser detected on system" -Type "SUCCESS"
-            Write-Host ""
-            Write-Host "Since this is a fresh install, we need to know your current Helium version."
-            Write-Host "You can find this in Helium: Menu > Help > About Helium"
-            Write-Host "The version looks like: 0.7.10.1"
-            Write-Host ""
-            $currentVersion = Read-Host "Enter your current Helium version (or press Enter to check for updates immediately)"
             
-            if ($currentVersion -match '^\d+\.\d+\.\d+(\.\d+)?$') {
-                $config.installedHeliumVersion = $currentVersion
-                Write-Status "Set current version to $currentVersion" -Type "SUCCESS"
+            # Try to auto-detect version from registry DisplayVersion
+            $detectedVersion = $heliumInstalled.DisplayVersion
+            if ($detectedVersion -match '^\d+\.\d+\.\d+(\.\d+)?$') {
+                $config.installedHeliumVersion = $detectedVersion
+                Write-Status "Detected installed version: $detectedVersion" -Type "SUCCESS"
             } else {
-                Write-Status "No version entered - will prompt for update on first run" -Type "WARN"
+                Write-Host ""
+                Write-Host "Could not auto-detect your Helium version."
+                Write-Host "You can find this in Helium: Menu > Help > About Helium"
+                Write-Host "The version looks like: 0.7.10.1"
+                Write-Host ""
+                $currentVersion = Read-Host "Enter your current Helium version (or press Enter to check for updates immediately)"
+                
+                if ($currentVersion -match '^\d+\.\d+\.\d+(\.\d+)?$') {
+                    $config.installedHeliumVersion = $currentVersion
+                    Write-Status "Set current version to $currentVersion" -Type "SUCCESS"
+                } else {
+                    Write-Status "No version entered - will prompt for update on first run" -Type "WARN"
+                }
             }
         }
         

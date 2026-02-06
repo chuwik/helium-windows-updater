@@ -117,7 +117,26 @@ function Get-LatestRelease {
 
 function Get-InstalledVersion {
     $config = Get-Config
-    return $config.installedHeliumVersion
+    $version = $config.installedHeliumVersion
+    
+    # Fallback: detect from registry if config has no version
+    if ([string]::IsNullOrEmpty($version)) {
+        try {
+            $heliumInstalled = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" 2>$null | Where-Object { $_.DisplayName -like "*helium*" } | Select-Object -First 1
+            if ($heliumInstalled -and $heliumInstalled.DisplayVersion -match '^\d+\.\d+\.\d+(\.\d+)?$') {
+                $version = $heliumInstalled.DisplayVersion
+                Write-Log "Detected installed version from registry: $version"
+                
+                # Save detected version to config for future use
+                $config.installedHeliumVersion = $version
+                Save-Config -Config $config
+            }
+        } catch {
+            Write-Log "Registry version detection failed: $_" -Level "WARN"
+        }
+    }
+    
+    return $version
 }
 
 function Compare-Versions {
