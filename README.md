@@ -1,5 +1,7 @@
 # Helium Browser Auto-Updater
 
+[![CI](https://github.com/chuwik/helium-windows-updater/actions/workflows/ci.yml/badge.svg)](https://github.com/chuwik/helium-windows-updater/actions/workflows/ci.yml)
+
 A PowerShell-based auto-updater for [Helium browser](https://github.com/imputnet/helium-windows) on Windows, since Helium doesn't have built-in auto-update functionality.
 
 ## Features
