@@ -1,3 +1,5 @@
+# Deprecated: helium now supports auto-update on Windows!
+
 # Helium Browser Auto-Updater
 
 [![CI](https://github.com/chuwik/helium-windows-updater/actions/workflows/ci.yml/badge.svg)](https://github.com/chuwik/helium-windows-updater/actions/workflows/ci.yml)
